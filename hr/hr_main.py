@@ -22,6 +22,7 @@ class HRMainWindow(QMainWindow):
 if __name__ == "__main__":
     # Create an instance of QApplication
     app = QApplication([])
+    app.setStyle("Fusion")
 
     # Create an instance of your main window
     window = HRMainWindow()
