@@ -2,6 +2,8 @@ from PySide2.QtWidgets import QWidget, QSizePolicy
 from PySide2.QtGui import QColor, QPainter, QPixmap, QPen, QImage
 from PySide2.QtCore import Qt, Signal, Slot
 
+import os
+
 class Star():
     def __init__(self, star_id, x, y, mag, color, selected=False):
         self._id = star_id
@@ -45,7 +47,7 @@ class StarImage(QWidget):
         self.setCursor(Qt.BlankCursor)
 
         # Load the background image
-        self.background_ = QPixmap("D:/Code/Cpp/Astrolab/hr/hr/m15gc.png")
+        self.background_ = QPixmap(os.path.join(os.getcwd(), 'assets', 'background', 'm15gc.png'))
 
         aspect_ratio = self.background_.width() / float(self.background_.height())
         self.setMinimumHeight(self.background_.height() / 2)
