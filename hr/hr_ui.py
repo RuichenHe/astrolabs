@@ -251,7 +251,7 @@ class Ui_HrDiagramLab(object):
         self.labelMagnitude.setText(QCoreApplication.translate("HrDiagramLab", u"V-Magnitude", None))
         self.label.setText(QCoreApplication.translate("HrDiagramLab", u"ID", None))
         self.exitButton.setText(QCoreApplication.translate("HrDiagramLab", u"Exit", None))
-        self.sdss_link_old.setText(QCoreApplication.translate("HrDiagramLab", u"<a href=\"http://cas.sdss.org/dr7/en/tools/chart/navi.asp?ra=88.075&dec=32.55\">Part E: Sloan Digital Sky Survey</a>", None))
+        self.sdss_link_old.setText(QCoreApplication.translate("HrDiagramLab", u"<a href=\"https://skyserver.sdss.org/dr18/VisualTools/navi\">Part E: Sloan Digital Sky Survey</a>", None))
         self.b_image_label.setText(QCoreApplication.translate("HrDiagramLab", u"B-Image", None))
         self.v_image_label.setText(QCoreApplication.translate("HrDiagramLab", u"V-Image", None))
         self.buildLabel.setText(QCoreApplication.translate("HrDiagramLab", u"TextLabel", None))

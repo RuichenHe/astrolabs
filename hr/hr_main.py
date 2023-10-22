@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # Create an instance of your main window
     window = HRMainWindow()
-    
+    window.setWindowTitle("Lab H: Hertzsprung-Russell diagram")
     # Display the window
     window.show()
 

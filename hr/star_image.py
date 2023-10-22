@@ -47,7 +47,12 @@ class StarImage(QWidget):
         self.setCursor(Qt.BlankCursor)
 
         # Load the background image
-        self.background_ = QPixmap(os.path.join(os.getcwd(), 'assets', 'background', 'm15gc.png'))
+        try:
+            self.background_ = QPixmap(os.path.join(os.getcwd(), '..','assets', 'background', 'm15gc.png'))
+            aspect_ratio = self.background_.width() / float(self.background_.height())
+        except:
+            self.background_ = QPixmap(os.path.join(os.getcwd(),'assets', 'background', 'm15gc.png'))
+            aspect_ratio = self.background_.width() / float(self.background_.height())
 
         aspect_ratio = self.background_.width() / float(self.background_.height())
         self.setMinimumHeight(self.background_.height() / 2)
