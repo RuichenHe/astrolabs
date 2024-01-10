@@ -42,13 +42,13 @@ class BillboardSet(Node):
         self.atlas_tex_unit = 0
         self.vert_shader = "../assets/shaders/billboard_set.vert"
         self.frag_shader = "../assets/shaders/billboard_set.frag"
-        self.program = None  
-        self.positionHandle = None  
-        self.textureHandle = None  
-        self.colorHandle = None  
-        self.mvpHandle = None  
-        self.samplerHandle = None  
-        self.opacityHandle = None 
+        self.program = 0 
+        self.positionHandle = 0
+        self.textureHandle = 0
+        self.colorHandle = 0
+        self.mvpHandle = 0
+        self.samplerHandle = 0 
+        self.opacityHandle = 0
         self.vao = 0
         self.vbo = 0
 
@@ -61,14 +61,11 @@ class BillboardSet(Node):
 
     def init_resources(self):
         print("BillboardSet::init_resources()")
-        check_GL_error("BillboardSet::init_resources() entry")
-
         self.program = glCreateProgram()
 
-        # Build program
-        if not build_program(self.program, "BillboardSet", self.vert_shader, self.frag_shader):
+        status = build_program(self.program, "BillboardSet", self.vert_shader, self.frag_shader)
+        if not status:
             return False
-        check_GL_error("BillboardSet::init_resources() 1")
 
         # Static properties
         self.positionHandle = glGetAttribLocation(self.program, "position_in_")
@@ -80,29 +77,34 @@ class BillboardSet(Node):
         self.opacityHandle = glGetUniformLocation(self.program, "global_alpha_")
 
         self.vao = glGenVertexArrays(1)
+        self.vbo = glGenBuffers(1)
         print("BillboardSet VAO", self.vao)
         glBindVertexArray(self.vao)
-
-        self.vbo = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glBufferData(GL_ARRAY_BUFFER, self.data_size * ctypes.sizeof(ctypes.c_float), None, GL_DYNAMIC_DRAW)
 
         stride = ctypes.sizeof(ctypes.c_float) * self.attributes_per_vert
-
         glVertexAttribPointer(self.positionHandle, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_position * ctypes.sizeof(ctypes.c_float)))
         glEnableVertexAttribArray(self.positionHandle)
+        # 
+        # 
+        # 
 
-        if self.textureHandle > 0:
-            glVertexAttribPointer(self.textureHandle, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_texture * ctypes.sizeof(ctypes.c_float)))
-            glEnableVertexAttribArray(self.textureHandle)
+        
 
-        if self.colorHandle > 0:
-            glVertexAttribPointer(self.colorHandle, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_color * ctypes.sizeof(ctypes.c_float)))
-            glEnableVertexAttribArray(self.colorHandle)
+        # if self.textureHandle > 0:
+        #     glVertexAttribPointer(self.textureHandle, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_texture * ctypes.sizeof(ctypes.c_float)))
+        #     glEnableVertexAttribArray(self.textureHandle)
 
-        glBindVertexArray(0)
+        # if self.colorHandle > 0:
+        #     glVertexAttribPointer(self.colorHandle, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_color * ctypes.sizeof(ctypes.c_float)))
+        #     glEnableVertexAttribArray(self.colorHandle)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-
+        glBindVertexArray(0)
+        error = glGetError()
+        if error != GL_NO_ERROR:
+            print("OpenGL error:", error)
+            return False
         return check_GL_error("BillboardSet::init_resources() exit")
     
     def init_grid(self, tiles_x):
@@ -189,13 +191,13 @@ class BillboardSet(Node):
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         check_GL_error("BillboardSet::upload_data() exit")
     
-    def render(self, camera):
+    def render(self, camera):    ### need check 0110
         # Assuming camera is a Python object with an attribute 'mvp' which is a NumPy array
         check_GL_error("BillboardSet::render() enter")
-
+        print("self.global_opacity", self.global_opacity)
         # Draw
         glUseProgram(self.program)
-        glBindVertexArray(0)
+        glBindVertexArray(self.vao)
 
         glUniformMatrix4fv(self.mvpHandle, 1, GL_FALSE, camera.mvp)
         glUniform1i(self.samplerHandle, self.atlas_tex_unit)
@@ -271,6 +273,8 @@ class ImageAtlas:
     
     def bind(self):
         glBindTexture(GL_TEXTURE_2D, self.tex)
+    def unbind(self):
+        glBindTexture(GL_TEXTURE_2D, 0)
 
     def cleanup(self):
         glDeleteTextures(1, [self.tex])
@@ -372,7 +376,6 @@ class FlatShape(Node):  # Assuming Node is a base class already defined
 
     def init_resources(self):
         self.vao = glGenVertexArrays(1)
-        print("FlatShape VAO", self.vao)
         self.vbo = glGenBuffers(1)
         return True
 
@@ -399,9 +402,10 @@ class FlatShape(Node):  # Assuming Node is a base class already defined
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glBufferData(GL_ARRAY_BUFFER, data.nbytes, data, GL_STATIC_DRAW)
-        glBindVertexArray(self.vao)
+        glBindVertexArray(0)
 
     def build_triangle(self, radius):
+        glBindVertexArray(self.vao)
         self.count = 3
         half_a = math.sqrt(3.0) * radius
 
@@ -413,7 +417,8 @@ class FlatShape(Node):  # Assuming Node is a base class already defined
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
-        glBindVertexArray(self.vao)
+        glFinish()
+        glBindVertexArray(0)
 
     def setup_array(self, positionHandle):
         print(f"FlatShape::setup_array positionHandle {positionHandle}", file=sys.stderr)
@@ -422,12 +427,14 @@ class FlatShape(Node):  # Assuming Node is a base class already defined
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glVertexAttribPointer(positionHandle, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(positionHandle)
+        glBindVertexArray(0)
 
     def bind(self):
         glBindVertexArray(self.vao)
 
     def render(self, camera):
         glDrawElements(GL_TRIANGLES, self.count, GL_UNSIGNED_INT, self.const_ix)
+
     
 
 class FullScreenImage(FlatShape):  # Assuming FlatShape is already defined
@@ -511,13 +518,13 @@ class FullScreenImage(FlatShape):  # Assuming FlatShape is already defined
 
     def render(self, camera):
         glUseProgram(self.program)
-
+        
         glUniform1i(self.backgroundHandle, self.tex_unit)
         glUniform1f(self.backgroundAlpha, self.alpha)
         glUniform1f(self.backgroundTime, self.time)
         glUniform3fv(self.backgroundScale, 1, self.scale)
-
-        # super().bind()
+        
+        super().bind()  ####  need check 0110
         super().render(camera)
 
         check_GL_error("FullScreenImage::render()")

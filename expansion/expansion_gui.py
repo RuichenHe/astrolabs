@@ -1,6 +1,7 @@
 from PySide2.QtWidgets import QMainWindow, QWidget, QBoxLayout, QVBoxLayout
 from PySide2.QtWidgets import QApplication
 from expansion_ui import Ui_ExpansionLab
+from OpenGL.GL import *
 
 
 class ExpansionLab(QWidget):

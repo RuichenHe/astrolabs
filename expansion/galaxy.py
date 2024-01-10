@@ -49,10 +49,13 @@ class GalaxySet(Node):  # Assuming Node is already defined
         self.galaxies.quad_height = self.galaxy_size
         self.galaxies.quad_width = self.galaxy_size
     def init_resources(self):
-        if not self.galaxies.init_resources():
-            return False
         if not self.galaxies_atlas.init_resources():
             return False
+        print("self.galaxies_atlas.init_resources(): Finished")
+        if not self.galaxies.init_resources():
+            return False
+        print("self.galaxies.init_resources(): Finished")
+        # 
         return True
     
     def update_positions(self, t_normal, eye_x, eye_y):
@@ -122,6 +125,7 @@ class GalaxySet(Node):  # Assuming Node is already defined
             self.galaxy_info[i].tex_rect = self.galaxies_atlas.get_tile_coordinates(map_ix)
 
     def render(self, camera):
+        print("self.galaxies_atlas.tex", self.galaxies_atlas.tex)
         glBindTexture(GL_TEXTURE_2D, self.galaxies_atlas.tex)
-
         self.galaxies.render(camera)
+        glBindTexture(GL_TEXTURE_2D, 0)

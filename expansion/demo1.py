@@ -1,14 +1,15 @@
 import sys
 from PySide2.QtWidgets import QApplication, QMainWindow, QOpenGLWidget
 from PySide2.QtGui import QImage, QColor, QPainter
+from PySide2.QtOpenGL import QGLWidget
 from PySide2.QtCore import QRect
 from OpenGL.GL import *
 
-from scene_graph import FullScreenImage
+from scene_graph1 import FullScreenImage
 from galaxy import GalaxySet
 from gl_utils import check_GL_error, Camera
 
-class MyOpenGLWidget(QOpenGLWidget):
+class MyOpenGLWidget(QGLWidget):
     def __init__(self, parent=None):
         super(MyOpenGLWidget, self).__init__(parent)
         ## Setup camera
@@ -54,7 +55,7 @@ class MyOpenGLWidget(QOpenGLWidget):
     def setEpoch(self, epoch):
         self.T_current = epoch
         self.updateTime()
-        glFlush()
+        #glFlush()
         check_GL_error("ExpansionLabWidget::load_backgrounds() exit")
 
     def updateTime(self):
@@ -113,11 +114,13 @@ class MyOpenGLWidget(QOpenGLWidget):
         # glEnable(GL_DEPTH_TEST)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        # galaxies_base = "../assets/billboards/galaxies/GAL"
-        # self.load_galaxies(galaxies_base, self.max_galaxy_image_count)
-
         expansion_base = "../assets/backgrounds/expansion/epoch_"
         self.load_backgrounds(expansion_base, self.max_background_image_count)
+
+        galaxies_base = "../assets/billboards/galaxies/GAL"
+        self.load_galaxies(galaxies_base, self.max_galaxy_image_count)
+
+        
     
     def load_backgrounds(self, base_path, image_count):
         self.background.init_resources()
@@ -141,6 +144,7 @@ class MyOpenGLWidget(QOpenGLWidget):
             self.background.upload_slice(i, buffer)
             print(f"Loaded file {i} : {filename} ( {img.width()} x {img.height()} )")
         glFlush()
+        self.background.unbind()
         check_GL_error("ExpansionLabWidget::load_backgrounds() exit")
 
     def load_galaxies(self, base_path, image_count):
@@ -174,8 +178,8 @@ class MyOpenGLWidget(QOpenGLWidget):
 
         reticule_visible = self.T_current > self.T_reticule_off
 
-        # if self.T_current > self.T_fade_i:
-        #     self.galaxies.render(self.camera)
+        if self.T_current > self.T_fade_i:
+            self.galaxies.render(self.camera)   ### need check 0110
 
         #     # if reticule_visible:
         #     #     self.distance_connectors.render(self.camera)
@@ -191,7 +195,10 @@ class MyOpenGLWidget(QOpenGLWidget):
         # # Draw the background
 
         if self.T_big_bang < self.T_current < self.T_fade_f:
+            #glBindVertexArray(self.background.vao)
+            self.background.bind()
             self.background.render(self.camera)
+            self.background.unbind()
     def resizeGL(self, w, h):
         aspect = float(w) / float(h)
 
