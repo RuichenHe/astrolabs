@@ -4,7 +4,7 @@ import math
 import random
 from OpenGL.GL import *
 from gl_utils import check_GL_error
-
+from PIL import Image
 
 class Galaxy:
     def __init__(self):
@@ -16,6 +16,7 @@ class Galaxy:
         self.selected = False
         self.name = ""
         self.tex_rect = np.array([0.0, 1.0, 1.0, 0.0], dtype=np.float32)
+
 
 class GalaxySet(Node):  # Assuming Node is already defined
     def __init__(self, max_galaxy_count, max_image_count, max_visible_galaxies, galaxies_tex_unit, distance_labels_tex_unit):
@@ -30,12 +31,12 @@ class GalaxySet(Node):  # Assuming Node is already defined
         self.scale_rand_min = 0.4
         self.scale_rand_max = 1.0
         self.rand_scale_location = 0.1
-        self.max_count = max_galaxy_count
+        self.max_count = max_galaxy_count  #16
         self.galaxy_info = [Galaxy() for _ in range(max_galaxy_count)]
         # Initialize galaxies_atlas and galaxies (assuming they are classes or methods)
 
         self.galaxies_atlas = ImageAtlas(galaxies_tex_unit, self.galaxy_image_w, self.galaxy_image_h, max_image_count)  # Assuming ImageAtlas is a class
-        self.galaxies = BillboardSet(max_visible_galaxies)  # Assuming BillboardSet is a class
+        self.galaxies = BillboardSet(max_visible_galaxies)  # Assuming BillboardSet is a class, 400
 
         # Shaders
         self.galaxies.vert_shader = "../assets/shaders/galaxy_set.vert"
@@ -64,7 +65,6 @@ class GalaxySet(Node):  # Assuming Node is already defined
 
         self.galaxies.count = 0
         for i in range(self.max_count):
-            print(self.galaxies.capacity)
             if self.galaxies.count >= self.galaxies.capacity:
                 break
 
@@ -80,6 +80,8 @@ class GalaxySet(Node):  # Assuming Node is already defined
             self.galaxies.info[self.galaxies.count].scale = np.array([self.galaxy_info[i].scale_x, self.galaxy_info[i].scale_y])
             self.galaxies.info[self.galaxies.count].rotation = self.galaxy_info[i].rotation
             self.galaxies.info[self.galaxies.count].tex = self.galaxy_info[i].tex_rect
+            print("self.galaxies.count", self.galaxies.count)
+            print("self.galaxies.info[self.galaxies.count].position", self.galaxies.info[self.galaxies.count].position)
 
             self.galaxies.count += 1
 
@@ -126,6 +128,17 @@ class GalaxySet(Node):  # Assuming Node is already defined
 
     def render(self, camera):
         print("self.galaxies_atlas.tex", self.galaxies_atlas.tex)
-        glBindTexture(GL_TEXTURE_2D, self.galaxies_atlas.tex)
-        self.galaxies.render(camera)
         glBindTexture(GL_TEXTURE_2D, 0)
+        self.galaxies.bind(self.galaxies_atlas.tex) ### This works, the tex indeed is used to set the texture
+        # glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        # # Create a buffer to read the texture
+        # buffer = np.zeros((self.galaxies_atlas.tex_height, self.galaxies_atlas.tex_width, 4), dtype=np.uint8)
+        # glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer)
+
+        # # PIL handles images in a different coordinate system
+        # buffer = np.flipud(buffer)
+
+        # image = Image.fromarray(buffer, 'RGBA')
+        # image.save("galaxies_atlas_new.png")
+        self.galaxies.render(camera)
+        self.galaxies.unbind()

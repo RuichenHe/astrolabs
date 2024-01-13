@@ -7,6 +7,8 @@ import sys
 from PIL import Image
 import random
     
+
+
 class FullScreenImage:  # Assuming FlatShape is already defined
     const_ix = [0, 1, 2, 2, 3, 1]
     def __init__(self, texture_unit, tex_width, tex_height, tex_depth):
@@ -148,3 +150,79 @@ class FullScreenImage:  # Assuming FlatShape is already defined
         glDrawElements(GL_TRIANGLES, self.count, GL_UNSIGNED_INT, self.const_ix)
 
         check_GL_error("FullScreenImage::render()")
+
+
+class Billboard:
+    def __init__(self):
+        self.enabled = False
+        self.position = np.zeros(3, dtype=np.float32)
+        self.rotation = 0.0
+        self.scale = np.array([1.0, 1.0], dtype=np.float32)
+        self.tex = np.zeros(4, dtype=np.float32)
+        self.color = np.array([1.0, 0.0, 0.0, 1.0], dtype=np.float32)
+
+
+class BillboardSet:
+    def __init__(self, max_billboards):
+        self.capacity = max_billboards
+        self.vert_shader = "../assets/shaders/billboard_set.vert"
+        self.frag_shader = "../assets/shaders/billboard_set.frag"
+        self.program = None 
+        self.vao = None
+        self.vbo = None
+        self.info = [Billboard() for _ in range(self.capacity)]
+        self.count = 0
+        self.global_opacity = 0
+
+    def init_resources(self):
+        # self.program = glCreateProgram()
+
+        # status = build_program(self.program, "Galaxy", self.vert_shader, self.frag_shader)
+        # if not status:
+        #     return False
+        glUseProgram(0)
+        glClearColor(0.0, 0.0, 0.0, 1.0)
+        glClearDepth(1.0)
+
+        glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
+        glEnable(GL_PROGRAM_POINT_SIZE)
+        glEnable(GL_BLEND)
+        glEnable(GL_TEXTURE_2D)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+        # glEnable(GL_DEPTH_TEST)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        #glUseProgram(self.program)
+        #self.opacityHandle = glGetUniformLocation(self.program, "global_alpha_")
+
+        self.vbo = glGenBuffers(1)
+        self.vbo_line = glGenBuffers(1)
+        self.vao = glGenVertexArrays(1)
+
+    def render(self, obj_count):
+        glUseProgram(0)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glVertexPointer(3, GL_FLOAT, 20, None)
+        glTexCoordPointer(2, GL_FLOAT, 20, ctypes.c_void_p(12))
+        #glUniform1f(self.opacityHandle, self.global_opacity)
+
+        glDrawArrays(GL_QUADS, 0, 4 * obj_count)
+
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
+
+        squareVertices = np.array([
+            -0.5, -0.5, 0.0,
+             0.5, -0.5, 0.0, 
+             0.5,  0.5, 0.0, 
+            -0.5,  0.5, 0.0,
+        ], dtype=np.float32)
+        glBufferData(GL_ARRAY_BUFFER, squareVertices.nbytes, squareVertices, GL_DYNAMIC_DRAW)
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0)
+        
+        
+        glDrawArrays(GL_LINE_LOOP, 0, 4)
+        glBindVertexArray(0)
+

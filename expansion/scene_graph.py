@@ -77,30 +77,24 @@ class BillboardSet(Node):
         self.opacityHandle = glGetUniformLocation(self.program, "global_alpha_")
 
         self.vao = glGenVertexArrays(1)
-        self.vbo = glGenBuffers(1)
-        print("BillboardSet VAO", self.vao)
         glBindVertexArray(self.vao)
+        self.vbo = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        print("self.data_size * ctypes.sizeof(ctypes.c_float)", self.data_size * ctypes.sizeof(ctypes.c_float))
         glBufferData(GL_ARRAY_BUFFER, self.data_size * ctypes.sizeof(ctypes.c_float), None, GL_DYNAMIC_DRAW)
 
         stride = ctypes.sizeof(ctypes.c_float) * self.attributes_per_vert
         glVertexAttribPointer(self.positionHandle, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_position * ctypes.sizeof(ctypes.c_float)))
         glEnableVertexAttribArray(self.positionHandle)
-        # 
-        # 
-        # 
-
-        
-
-        # if self.textureHandle > 0:
-        #     glVertexAttribPointer(self.textureHandle, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_texture * ctypes.sizeof(ctypes.c_float)))
-        #     glEnableVertexAttribArray(self.textureHandle)
-
-        # if self.colorHandle > 0:
-        #     glVertexAttribPointer(self.colorHandle, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_color * ctypes.sizeof(ctypes.c_float)))
-        #     glEnableVertexAttribArray(self.colorHandle)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        if self.textureHandle > 0:
+            glVertexAttribPointer(self.textureHandle, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_texture * ctypes.sizeof(ctypes.c_float)))
+            glEnableVertexAttribArray(self.textureHandle)
+        if self.colorHandle > 0:
+            glVertexAttribPointer(self.colorHandle, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(self.ix_color * ctypes.sizeof(ctypes.c_float)))
+            glEnableVertexAttribArray(self.colorHandle)
         glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        
         error = glGetError()
         if error != GL_NO_ERROR:
             print("OpenGL error:", error)
@@ -184,30 +178,53 @@ class BillboardSet(Node):
                     self.vertex_data[offset] = data_quad[k]
                     offset = offset + 1
 
+        self.vertices = np.array([
+            -1, -1, 0,  0, 1,
+             1, -1, 0,  1, 1,
+             1,  1, 0,  1, 0,
+            -1,  1, 0,  0, 0,
+        ], dtype=np.float32)
+
+
+        self.vbo = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        print(self.vertex_data)
-        print(self.vertex_data.nbytes)
-        glBufferSubData(GL_ARRAY_BUFFER, 0, self.vertex_data.nbytes, self.vertex_data)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+
+        # glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        # glBufferSubData(GL_ARRAY_BUFFER, 0, self.vertex_data.nbytes, self.vertex_data)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         check_GL_error("BillboardSet::upload_data() exit")
     
+    def bind(self, tex):
+        glBindVertexArray(self.vao)
+        glBindTexture(GL_TEXTURE_2D, tex)
+    def unbind(self):
+        glBindVertexArray(0)
+        glBindTexture(GL_TEXTURE_2D, 0)
+
     def render(self, camera):    ### need check 0110
         # Assuming camera is a Python object with an attribute 'mvp' which is a NumPy array
         check_GL_error("BillboardSet::render() enter")
-        print("self.global_opacity", self.global_opacity)
         # Draw
         glUseProgram(self.program)
-        glBindVertexArray(self.vao)
 
-        glUniformMatrix4fv(self.mvpHandle, 1, GL_FALSE, camera.mvp)
-        glUniform1i(self.samplerHandle, self.atlas_tex_unit)
-        glUniform1f(self.opacityHandle, self.global_opacity)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glVertexPointer(3, GL_FLOAT, 20, None)
+        glTexCoordPointer(2, GL_FLOAT, 20, ctypes.c_void_p(12))
 
-        # Assuming count is the number of billboards to be drawn
-        print("Count: ", self.count)
-        glDrawArrays(GL_TRIANGLES, 0, 6 * self.count)
+        glDrawArrays(GL_QUADS, 0, 4)
+        
 
-        glBindVertexArray(0)
+        # glUniformMatrix4fv(self.mvpHandle, 1, GL_FALSE, camera.mvp)
+        # glUniform1i(self.samplerHandle, self.atlas_tex_unit)
+        # glUniform1f(self.opacityHandle, self.global_opacity)
+
+        # # Assuming count is the number of billboards to be drawn
+        # print("Count: ", self.count)
+        # glDrawArrays(GL_TRIANGLES, 0, 6 * self.count)
+
+        
         check_GL_error("BillboardSet::render() exit")
 
     
@@ -258,7 +275,7 @@ class ImageAtlas:
         # Create the textures we need
         self.tex = glGenTextures(1)
 
-        glActiveTexture(GL_TEXTURE0 + self.tex_unit)
+        #glActiveTexture(GL_TEXTURE0 + self.tex_unit)
         glBindTexture(GL_TEXTURE_2D, self.tex)
         glPixelStorei(GL_PACK_ALIGNMENT, 4)
 
@@ -268,6 +285,7 @@ class ImageAtlas:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.tex_width, self.tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero_buffer)
+        glBindTexture(GL_TEXTURE_2D, 0)
 
         return True
     
@@ -299,7 +317,7 @@ class ImageAtlas:
             (ix + 1) * tex_dx,
             iy * tex_dy
         ], dtype=np.float32)
-        print(tex_uv)
+        print("tex_uv", tex_uv)
 
         return tex_uv
     
@@ -310,11 +328,11 @@ class ImageAtlas:
 
         index = self.count
         self.count += 1
-
+        result = None
         if buffer is not None:
-            self.update_tile(index, buffer)
+            result = self.update_tile(index, buffer)
 
-        return index
+        return result
         
     def update_tile(self, index, buffer):
         if index >= self.count:
@@ -342,8 +360,16 @@ class ImageAtlas:
 
         glFlush()
         glGenerateMipmap(GL_TEXTURE_2D)
-
-        return check_GL_error("ImageAtlas::upload_tile() exit")
+        x1 = x/self.tex_width
+        y1 = y/self.tex_height
+        x2 = (x + self.tile_width)/self.tex_width
+        y2 = (y + self.tile_height)/self.tex_height
+        result = []
+        result.append(np.array([x1, y2], dtype=np.float32))
+        result.append(np.array([x2, y2], dtype=np.float32))
+        result.append(np.array([x2, y1], dtype=np.float32))
+        result.append(np.array([x1, y1], dtype=np.float32))
+        return result
     
     def save_atlas(self, filename):
         self.save_atlas_static(self.tex, self.tex_width, self.tex_height, filename)
@@ -363,6 +389,7 @@ class ImageAtlas:
 
         image = Image.fromarray(buffer, 'RGBA')
         image.save(filename)
+        glBindTexture(GL_TEXTURE_2D, 0)
 
 
 class FlatShape(Node):  # Assuming Node is a base class already defined
