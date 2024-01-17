@@ -3,6 +3,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QOpenGLWidget
 from PySide2.QtGui import QImage, QColor, QPainter
 from PySide2.QtOpenGL import QGLWidget
 from PySide2.QtCore import QRect
+from PySide2.QtCore import Signal
 from OpenGL.GL import *
 import numpy as np
 
@@ -33,17 +34,21 @@ class GalaxyInfo:
         self.x2 = None
         self.y1 = None
         self.y2 = None
-    def generate_cord(self, scale = 1):
+        self.bbox = None
+        self.center = None
+    def generate_cord(self, scale = 1, aspect = 1):
         self.scale = scale
+        self.center = np.array([self.x * scale, self.y * scale, 0], dtype=np.float32)
         self.x1 = self.x * scale - self.width/2
         self.x2 = self.x * scale + self.width/2
-        self.y1 = self.y * scale - self.height/2
-        self.y2 = self.y * scale + self.height/2
+        self.y1 = self.y * scale - self.height/2 * aspect
+        self.y2 = self.y * scale + self.height/2 * aspect
         result = []
-        result.append(np.array([self.x1, self.y1, 0], dtype=np.float32) )
+        result.append(np.array([self.x1, self.y1, 0], dtype=np.float32))
         result.append(np.array([self.x2, self.y1, 0], dtype=np.float32))
         result.append(np.array([self.x2, self.y2, 0], dtype=np.float32))
         result.append(np.array([self.x1, self.y2, 0], dtype=np.float32))
+        self.bbox = result
         return result
     def hit_test(self, u, v):
         if u > self.x2 or u < self.x1 or v > self.y2 or v < self.y1:
@@ -52,6 +57,7 @@ class GalaxyInfo:
 
 
 class MyOpenGLWidget(QGLWidget):
+    countChanged = Signal(int)
     def __init__(self, parent=None):
         super(MyOpenGLWidget, self).__init__(parent)
         ## Setup camera
@@ -103,6 +109,11 @@ class MyOpenGLWidget(QGLWidget):
 
         self.T_galaxy_move = -12.0
         self.T_reticule_off = -11.0
+        self.select_id_list = []
+        self.bbox_vertices = None
+        self.line_vertices = None
+        self.aspect = float(self.size().width())/float(self.size().height())
+        print(self.aspect)
 
     def update_position(self, t):
         self.global_scale = self.global_scale_min + t * (self.global_scale_max - self.global_scale_min)
@@ -113,7 +124,7 @@ class MyOpenGLWidget(QGLWidget):
     def generate_verticies(self):
         result = None
         for current_galaxy_info in self.galaxy_info:
-            current_galaxy_vert = current_galaxy_info.generate_cord(self.global_scale)
+            current_galaxy_vert = current_galaxy_info.generate_cord(self.global_scale, self.aspect)
             current_galaxy_tex = self.galaxy_tex_info[current_galaxy_info.tex_id].tex_cord
             for current_vert, current_tex in zip(current_galaxy_vert, current_galaxy_tex):
                 if result is None:
@@ -123,6 +134,39 @@ class MyOpenGLWidget(QGLWidget):
                     result = np.append(result, current_vert)
                     result = np.append(result, current_tex)
         self.vertices = result
+
+    def generate_bbox_verticies(self):
+        result = None
+        for current_hit_id in self.select_id_list:
+            current_select_galaxy_info = self.galaxy_info[current_hit_id]
+            current_bbox = current_select_galaxy_info.bbox
+            if result is None:
+                result = current_bbox[0]
+                result = np.append(result, current_bbox[1])
+                result = np.append(result, current_bbox[2])
+                result = np.append(result, current_bbox[3])
+            else:
+                result = np.append(result, current_bbox[0])
+                result = np.append(result, current_bbox[1])
+                result = np.append(result, current_bbox[2])
+                result = np.append(result, current_bbox[3])
+        self.bbox_vertices = result
+
+    def generate_line_verticies(self):
+        result = None
+        if len(self.select_id_list) < 2:
+            return result
+        start_galaxy_center = self.galaxy_info[self.select_id_list[0]].center
+        for current_hit_id in range(1, len(self.select_id_list)):
+            current_select_galaxy_center = self.galaxy_info[self.select_id_list[current_hit_id]].center
+            print("Distance: ", 8 * np.sqrt(np.dot(start_galaxy_center - current_select_galaxy_center, start_galaxy_center - current_select_galaxy_center)))
+            if result is None:
+                result = start_galaxy_center
+                result = np.append(result, current_select_galaxy_center)
+            else:
+                result = np.append(result, start_galaxy_center)
+                result = np.append(result, current_select_galaxy_center)
+        self.line_vertices = result
 
     def upload_vertices(self):
         glBindBuffer(GL_ARRAY_BUFFER, self.galaxies.vbo)
@@ -264,8 +308,6 @@ class MyOpenGLWidget(QGLWidget):
             x = np.random.uniform(-0.3, 0.3)
             y = np.random.uniform(-0.3, 0.3)
             tex_id = np.random.randint(0, len(self.galaxy_tex_info))
-            print(i, tex_id)
-            print(x, y)
             self.galaxy_info.append(GalaxyInfo(i, tex_id, x, y, self.default_galaxy_size, self.default_galaxy_size))
 
     def paintGL(self):
@@ -275,8 +317,10 @@ class MyOpenGLWidget(QGLWidget):
         reticule_visible = self.T_current > self.T_reticule_off
 
         if self.T_current > self.T_fade_i:
+            self.generate_bbox_verticies()
+            self.generate_line_verticies()
             glBindTexture(GL_TEXTURE_2D, self.galaxies_atlas.tex)
-            self.galaxies.render(len(self.galaxy_info))
+            self.galaxies.render(len(self.galaxy_info), self.bbox_vertices, self.line_vertices)
             glBindTexture(GL_TEXTURE_2D, 0)
 
         #     # if reticule_visible:
@@ -298,20 +342,22 @@ class MyOpenGLWidget(QGLWidget):
             self.background.render(self.camera)
             self.background.unbind()
     def resizeGL(self, w, h):
-        aspect = float(w) / float(h)
+        self.aspect = float(w) / float(h)
 
         top = self.top
         left = self.left
 
-        if aspect <= 1.0:
-            top /= aspect
+        if self.aspect <= 1.0:
+            top /=self.aspect
         else:
-            left *= aspect
+            left *= self.aspect
 
         self.camera.init_orthographic(w, h, left, top, self.near, self.far)
         self.camera.init_model_view()
         self.camera.look_at(self.center, self.eye, self.up)
         glViewport(0, 0, w, h)
+        self.updateTime()
+        self.update()
     def hit_test(self, u, v):
         for current_galaxy_info in self.galaxy_info:
             if current_galaxy_info.hit_test(u, v) == True:
@@ -324,6 +370,26 @@ class MyOpenGLWidget(QGLWidget):
         v = 1 - 2 * y/self.size().height()
         print("u, v:", u, v)
         print(self.hit_test(u,v))
+        hit_id = self.hit_test(u,v)
+        if  hit_id != -1 and self.galaxy_info[hit_id].select == False:
+            self.galaxy_info[hit_id].select = True
+            self.select_id_list.append(hit_id)
+            self.paintGL()
+            self.update()
+            self.countChanged.emit(len(self.select_id_list))
+    def reset(self):
+        for i in range(len(self.galaxy_info)):
+            self.galaxy_info[i].select = False
+        self.T_current = 0
+        self.select_id_list = []
+        self.bbox_vertices = None
+        self.line_vertices = None
+        self.update()
+
+
+        
+        
+
 
 class MainWindow(QMainWindow):
     def __init__(self):

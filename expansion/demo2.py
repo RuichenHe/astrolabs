@@ -34,8 +34,10 @@ class GalaxyInfo:
         self.y1 = None
         self.y2 = None
         self.bbox = None
+        self.center = None
     def generate_cord(self, scale = 1):
         self.scale = scale
+        self.center = np.array([self.x * scale, self.y * scale, 0], dtype=np.float32)
         self.x1 = self.x * scale - self.width/2
         self.x2 = self.x * scale + self.width/2
         self.y1 = self.y * scale - self.height/2

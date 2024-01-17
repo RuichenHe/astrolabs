@@ -175,54 +175,54 @@ class BillboardSet:
         self.global_opacity = 0
 
     def init_resources(self):
-        # self.program = glCreateProgram()
-
-        # status = build_program(self.program, "Galaxy", self.vert_shader, self.frag_shader)
-        # if not status:
-        #     return False
         glUseProgram(0)
         glClearColor(0.0, 0.0, 0.0, 1.0)
         glClearDepth(1.0)
 
         glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
-        glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_BLEND)
         glEnable(GL_TEXTURE_2D)
         glEnableClientState(GL_VERTEX_ARRAY)
         glEnableClientState(GL_TEXTURE_COORD_ARRAY)
         # glEnable(GL_DEPTH_TEST)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         
         #glUseProgram(self.program)
         #self.opacityHandle = glGetUniformLocation(self.program, "global_alpha_")
 
         self.vbo = glGenBuffers(1)
         self.vbo_line = glGenBuffers(1)
-        self.vao = glGenVertexArrays(1)
 
-    def render(self, obj_count):
+    def render(self, obj_count, bbox_vertices, line_vertices):
         glUseProgram(0)
+
+        glColor4f(1.0, 1.0, 1.0, 1.0)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glVertexPointer(3, GL_FLOAT, 20, None)
         glTexCoordPointer(2, GL_FLOAT, 20, ctypes.c_void_p(12))
-        #glUniform1f(self.opacityHandle, self.global_opacity)
-
         glDrawArrays(GL_QUADS, 0, 4 * obj_count)
 
-        glBindVertexArray(self.vao)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
+        if bbox_vertices is not None:
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
+            glBindTexture(GL_TEXTURE_2D, 0)  #### Need to reset the texture before drawing
+            glBufferData(GL_ARRAY_BUFFER, bbox_vertices.nbytes, bbox_vertices, GL_DYNAMIC_DRAW)
+            glColor4f(1.0, 0.0, 0.0, 1)
+            glLineWidth(3.0)
+            glVertexPointer(3, GL_FLOAT, 0, None)
+            for i in range(int(bbox_vertices.shape[0]/12)):
+                glDrawArrays(GL_LINE_LOOP, int(i * 4), 4)
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+        
+        if line_vertices is not None:
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
+            glBindTexture(GL_TEXTURE_2D, 0)  #### Need to reset the texture before drawing
+            glBufferData(GL_ARRAY_BUFFER, line_vertices.nbytes, line_vertices, GL_DYNAMIC_DRAW)
+            glColor4f(1.0, 0.0, 0.0, 1)
+            glLineWidth(3.0)
+            glVertexPointer(3, GL_FLOAT, 0, None)
+            glDrawArrays(GL_LINES, 0, line_vertices.shape[0])
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY)
 
-        squareVertices = np.array([
-            -0.5, -0.5, 0.0,
-             0.5, -0.5, 0.0, 
-             0.5,  0.5, 0.0, 
-            -0.5,  0.5, 0.0,
-        ], dtype=np.float32)
-        glBufferData(GL_ARRAY_BUFFER, squareVertices.nbytes, squareVertices, GL_DYNAMIC_DRAW)
-        glEnableVertexAttribArray(0)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0)
-        
-        
-        glDrawArrays(GL_LINE_LOOP, 0, 4)
-        glBindVertexArray(0)
 

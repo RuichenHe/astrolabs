@@ -20,7 +20,8 @@ class ExpansionLab(QWidget):
         self.ui.timeLabel.setText(f"{0:.2f} Gyr")
         self.ui.resetButton.clicked.connect(self.on_resetButton_clicked)
         self.ui.exitButton.clicked.connect(self.on_exitButton_clicked)
-        self.updateSelection(1)
+        self.updateSelection(0)
+        self.ui.sceneWidget.countChanged.connect(self.updateSelection)
 
     def on_epochSlider_valueChanged(self, value):
         print(f"ExpansionLab::on_epochSlider_valueChanged {value}")
@@ -44,7 +45,7 @@ class ExpansionLab(QWidget):
             self.ui.directionsLabel.setText("")
 
     def on_resetButton_clicked(self):
-        #self.ui.sceneWidget.reset()
+        self.ui.sceneWidget.reset()
         self.updateSelection(0)
         self.ui.epochSlider.setValue(0)
         self.ui.timeLabel.setText(f"{0:.2f} Gyr")
