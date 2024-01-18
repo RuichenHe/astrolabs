@@ -237,7 +237,7 @@ class BillboardSet:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
             glBindTexture(GL_TEXTURE_2D, 0)  #### Need to reset the texture before drawing
             glBufferData(GL_ARRAY_BUFFER, bbox_vertices.nbytes, bbox_vertices, GL_DYNAMIC_DRAW)
-            glColor4f(1.0, 0.0, 0.0, 1)
+            glColor4f(1.0, 1.0, 0.0, 1)
             glLineWidth(3.0)
             glVertexPointer(3, GL_FLOAT, 0, None)
             for i in range(int(bbox_vertices.shape[0]/12)):
@@ -249,7 +249,7 @@ class BillboardSet:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line)
             glBindTexture(GL_TEXTURE_2D, 0)  #### Need to reset the texture before drawing
             glBufferData(GL_ARRAY_BUFFER, line_vertices.nbytes, line_vertices, GL_DYNAMIC_DRAW)
-            glColor4f(1.0, 0.0, 0.0, 1)
+            glColor4f(1.0, 0.0, 1.0, 1)
             glLineWidth(3.0)
             glVertexPointer(3, GL_FLOAT, 0, None)
             glDrawArrays(GL_LINES, 0, line_vertices.shape[0])
