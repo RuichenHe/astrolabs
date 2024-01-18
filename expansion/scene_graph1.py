@@ -3,6 +3,10 @@ from OpenGL.GL import *
 import numpy as np
 import math
 from gl_utils import check_GL_error, build_program
+from PySide2.QtGui import QImage, QPainter, QFont, QPen, QColor
+from PySide2.QtCore import Qt, QRect
+from OpenGL.GL import *
+
 import sys
 from PIL import Image
 import random
@@ -192,8 +196,34 @@ class BillboardSet:
 
         self.vbo = glGenBuffers(1)
         self.vbo_line = glGenBuffers(1)
+        self.text_label_vbo = glGenBuffers(1)
+        self.text_label_vao = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.text_label_vao)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+        glBindTexture(GL_TEXTURE_2D, 0)
 
-    def render(self, obj_count, bbox_vertices, line_vertices):
+    def generate_label_texture(self, text):
+        width, height = 256, 128
+        font_size = 40
+        text_color = QColor(0, 255, 0)  # White color
+        background_color = QColor(0, 255, 0, 32)  # Transparent background
+
+        # Create a QImage and a QPainter
+        image = QImage(width, height, QImage.Format_ARGB32)
+        image.fill(background_color)
+
+        painter = QPainter(image)
+        painter.setPen(QPen(text_color))
+        painter.setFont(QFont("Arial", font_size))
+        painter.drawText(QRect(0, 0, width, height), Qt.AlignCenter, text)
+        painter.end()
+        buffer = image.bits().tobytes()
+        return buffer
+    
+    def render(self, obj_count, bbox_vertices, line_vertices, text_label_info):
         glUseProgram(0)
 
         glColor4f(1.0, 1.0, 1.0, 1.0)
@@ -224,5 +254,43 @@ class BillboardSet:
             glVertexPointer(3, GL_FLOAT, 0, None)
             glDrawArrays(GL_LINES, 0, line_vertices.shape[0])
             glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+
+
+            #### Draw the text label
+            glColor4f(1.0, 1.0, 1.0, 1.0)
+            for text_info in text_label_info:
+                text = "%.2f Mpc"%(text_info[0])
+                buffer = self.generate_label_texture(text)
+
+
+                glBindTexture(GL_TEXTURE_2D, self.text_label_vao)
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer)
+                glGenerateMipmap(GL_TEXTURE_2D)
+                
+                x = text_info[1]
+                y = text_info[2]
+                z = text_info[3]
+                squareVertices = np.array([
+                x-0.05, y-0.05, z, 0, 1, 
+                x+0.05, y-0.05, z, 1, 1,  
+                x+0.05,  y+0.05, z, 1, 0, 
+                x-0.05,  y+0.05, z , 0, 0,
+                ], dtype=np.float32)
+
+                glBindBuffer(GL_ARRAY_BUFFER, self.text_label_vbo)
+                glBufferData(GL_ARRAY_BUFFER, squareVertices.nbytes, squareVertices, GL_DYNAMIC_DRAW)
+                glVertexPointer(3, GL_FLOAT, 20, None)
+                glTexCoordPointer(2, GL_FLOAT, 20, ctypes.c_void_p(12))
+                glDrawArrays(GL_QUADS, 0, 4)
+
+
+
+                glBindTexture(GL_TEXTURE_2D, 0)
+
+
+            
+            
+
+
 
 

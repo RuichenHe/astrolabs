@@ -112,6 +112,7 @@ class MyOpenGLWidget(QGLWidget):
         self.select_id_list = []
         self.bbox_vertices = None
         self.line_vertices = None
+        self.text_label_info = None
         self.aspect = float(self.size().width())/float(self.size().height())
         print(self.aspect)
 
@@ -154,19 +155,26 @@ class MyOpenGLWidget(QGLWidget):
 
     def generate_line_verticies(self):
         result = None
+        text_label_result = []
         if len(self.select_id_list) < 2:
             return result
+        
         start_galaxy_center = self.galaxy_info[self.select_id_list[0]].center
         for current_hit_id in range(1, len(self.select_id_list)):
             current_select_galaxy_center = self.galaxy_info[self.select_id_list[current_hit_id]].center
-            print("Distance: ", 8 * np.sqrt(np.dot(start_galaxy_center - current_select_galaxy_center, start_galaxy_center - current_select_galaxy_center)))
+            distance = 8 * np.sqrt(np.dot(start_galaxy_center - current_select_galaxy_center, start_galaxy_center - current_select_galaxy_center))
+
+            print("Distance: ", distance)
             if result is None:
                 result = start_galaxy_center
                 result = np.append(result, current_select_galaxy_center)
             else:
                 result = np.append(result, start_galaxy_center)
                 result = np.append(result, current_select_galaxy_center)
+            middle_point = (start_galaxy_center + current_select_galaxy_center)/2
+            text_label_result.append(np.array([distance, middle_point[0], middle_point[1], middle_point[2]]))
         self.line_vertices = result
+        self.text_label_info = text_label_result
 
     def upload_vertices(self):
         glBindBuffer(GL_ARRAY_BUFFER, self.galaxies.vbo)
@@ -320,7 +328,7 @@ class MyOpenGLWidget(QGLWidget):
             self.generate_bbox_verticies()
             self.generate_line_verticies()
             glBindTexture(GL_TEXTURE_2D, self.galaxies_atlas.tex)
-            self.galaxies.render(len(self.galaxy_info), self.bbox_vertices, self.line_vertices)
+            self.galaxies.render(len(self.galaxy_info), self.bbox_vertices, self.line_vertices, self.text_label_info)
             glBindTexture(GL_TEXTURE_2D, 0)
 
         #     # if reticule_visible:
